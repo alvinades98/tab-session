@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MultiSession Pro - Dashboard & Pengaturan</title>
+  <link rel="stylesheet" href="options.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="options-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="4" width="13" height="13" rx="3" fill="#faae2b" stroke="#18181b" stroke-width="2"/>
+            <rect x="9" y="7" width="13" height="13" rx="3" fill="#f36c21" stroke="#18181b" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="sidebar-title">
+          <h2>MultiSession</h2>
+          <span class="badge-pro">PRO</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="tab-sessions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Daftar Session</span>
+        </button>
+        <button class="nav-item" data-tab="tab-tabs">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+          <span>Tab & Mode Isolasi</span>
+        </button>
+        <button class="nav-item" data-tab="tab-cookies">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="8" r="1" fill="currentColor"></circle>
+            <circle cx="8" cy="14" r="1" fill="currentColor"></circle>
+            <circle cx="15" cy="15" r="1" fill="currentColor"></circle>
+          </svg>
+          <span>Cookie & Domain</span>
+        </button>
+        <button class="nav-item" data-tab="tab-backup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Backup & Restore</span>
+        </button>
+        <button class="nav-item" data-tab="tab-guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Panduan Penggunaan</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="version-label">v1.1.0 • Per-Tab Multi-Session Engine</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- TAB 1: Sessions -->
+      <section id="tab-sessions" class="tab-pane active">
+        <div class="tab-header">
+          <div>
+            <h1 class="page-title">Profil & Session</h1>
+            <p class="page-subtitle">Kelola semua profil session untuk akun pekerjaan, pribadi, dan akun sekunder.</p>
+          </div>
+          <button id="btn-create-session" class="btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Tambah Session</span>
+          </button>
+        </div>
+
+        <div class="sessions-grid" id="sessions-grid">
+          <!-- Session Cards -->
+        </div>
+      </section>
+
+      <!-- TAB 2: Tabs & Isolation Mode -->
+      <section id="tab-tabs" class="tab-pane">
+        <div class="tab-header">
+          <div>
+            <h1 class="page-title">Pengaturan Mode Isolasi & Tampilan</h1>
+            <p class="page-subtitle">Pilih bagaimana session diisolasi (Per-Tab atau Per-Domain), atur tampilan badge visual di web, dan pantau session setiap tab yang terbuka.</p>
+          </div>
+        </div>
+
+        <div class="settings-stack" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+          <div class="setting-card">
+            <div class="setting-icon" style="background: var(--saweria-yellow); color: var(--ink-black);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <h3>Mode Isolasi Utama</h3>
+              <p><strong>Per-Tab:</strong> Setiap tab browser dapat memiliki session akun berbeda secara independen meskipun membuka website yang sama.<br><strong>Per-Domain:</strong> Mengganti session akan diterapkan ke seluruh tab pada website tersebut.</p>
+            </div>
+            <div class="mode-select-box">
+              <select id="select-isolation-mode" class="custom-select">
+                <option value="tab">Mode: Per-Tab (Rekomendasi)</option>
+                <option value="domain">Mode: Global Domain</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-icon" style="background: var(--saweria-blue); color: var(--ink-black);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <rect x="11" y="11" width="7" height="7" rx="1.5" fill="#faae2b" stroke="#18181b" stroke-width="1.5"></rect>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <h3>Badge Indikator Melayang di Web (Pojok Kanan Bawah)</h3>
+              <p>Tampilkan badge melayang berisi icon & nama session aktif di pojok kanan bawah setiap halaman website. Nonaktifkan jika ingin menghilangkan tulisan dan icon melayang ini.</p>
+            </div>
+            <div class="toggle-switch-wrapper">
+              <label class="switch">
+                <input type="checkbox" id="toggle-floating-badge" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom: 12px; font-size: 16px;">Daftar Tab Browser Terbuka</h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tab ID</th>
+                <th>Judul & Website</th>
+                <th>Session Tab</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tabs-table-body">
+              <!-- Live Tab Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 3: Cookies & Domains -->
+      <section id="tab-cookies" class="tab-pane">
+        <div class="tab-header">
+          <div>
+            <h1 class="page-title">Manajemen Cookie per Domain</h1>
+            <p class="page-subtitle">Lihat dan bersihkan cookie yang disimpan untuk setiap website dan session.</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Domain Website</th>
+                <th>Session Terkait</th>
+                <th>Jumlah Cookies</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="cookies-table-body">
+              <!-- Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 4: Backup & Restore -->
+      <section id="tab-backup" class="tab-pane">
+        <div class="tab-header">
+          <div>
+            <h1 class="page-title">Backup & Restore</h1>
+            <p class="page-subtitle">Simpan atau pulihkan data session dan cookie ke file JSON.</p>
+          </div>
+        </div>
+
+        <div class="backup-cards-grid">
+          <div class="setting-card">
+            <div class="setting-icon export-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <h3>Export Data Session</h3>
+              <p>Download semua konfigurasi profil dan snapshot cookies ke file <code>multisession_backup.json</code>.</p>
+            </div>
+            <button id="btn-export-json" class="btn-primary">Download Backup</button>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-icon import-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <h3>Import & Restore Data</h3>
+              <p>Pulihkan profil session dan cookies dari file JSON backup sebelumnya.</p>
+            </div>
+            <label class="btn-secondary file-upload-btn">
+              <span>Pilih File Backup</span>
+              <input type="file" id="input-import-file" accept=".json" style="display:none;">
+            </label>
+          </div>
+
+          <div class="setting-card danger-card">
+            <div class="setting-icon danger-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <h3>Reset Seluruh Data Extension</h3>
+              <p>Hapus semua session kustom, pemetaan domain, dan database cookie tersimpan.</p>
+            </div>
+            <button id="btn-reset-all" class="btn-danger">Reset ke Default</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Panduan -->
+      <section id="tab-guide" class="tab-pane">
+        <div class="tab-header">
+          <div>
+            <h1 class="page-title">Panduan Multi-Session Per-Tab</h1>
+            <p class="page-subtitle">Cara menjalankan banyak akun secara bersamaan di tab berbeda.</p>
+          </div>
+        </div>
+
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-num">1</div>
+            <h3>Fitur Multi-Session Per Tab</h3>
+            <p>Anda dapat membuka website yang sama (misal: <em>twitter.com</em>) di 2 tab berdampingan: Tab 1 memakai Akun A, Tab 2 memakai Akun B tanpa bentrok!</p>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-num">2</div>
+            <h3>Buka Tab Baru Terisolasi</h3>
+            <p>Di popup ekstensi, klik tombol <strong>+ Tab Baru</strong> pada profil yang diinginkan. Tab baru akan otomatis dibuat dan terhubung ke session tersebut.</p>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-num">3</div>
+            <h3>Klik Kanan (Context Menu)</h3>
+            <p>Klik kanan pada tautan link apa pun -> pilih <strong>MultiSession Pro > Buka Link di Tab Session Baru</strong> untuk langsung membuka link di profil lain.</p>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-num">4</div>
+            <h3>Indikator Tab Realtime</h3>
+            <p>Ikon ekstensi di pojok kanan atas browser selalu menampilkan singkatan nama dan warna session aktif untuk tab yang sedang Anda lihat.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Edit / Create -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Buat Session Baru</h3>
+        <button id="btn-close-modal" class="close-btn">&times;</button>
+      </div>
+      <form id="session-form">
+        <input type="hidden" id="form-session-id">
+        <div class="form-group">
+          <label>Nama Session</label>
+          <input type="text" id="form-session-name" required placeholder="cth: Akun Toko Online">
+        </div>
+        <div class="form-group">
+          <label>Ikon</label>
+          <div class="icon-picker" id="icon-picker">
+            <button type="button" class="icon-opt active" data-icon="👤">👤</button>
+            <button type="button" class="icon-opt" data-icon="💼">💼</button>
+            <button type="button" class="icon-opt" data-icon="⚡">⚡</button>
+            <button type="button" class="icon-opt" data-icon="🛒">🛒</button>
+            <button type="button" class="icon-opt" data-icon="🎮">🎮</button>
+            <button type="button" class="icon-opt" data-icon="🔐">🔐</button>
+            <button type="button" class="icon-opt" data-icon="🌐">🌐</button>
+            <button type="button" class="icon-opt" data-icon="🚀">🚀</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Warna Profil</label>
+          <div class="color-picker" id="color-picker">
+            <button type="button" class="color-opt active" data-color="#faae2b" style="background:#faae2b;"></button>
+            <button type="button" class="color-opt" data-color="#f36c21" style="background:#f36c21;"></button>
+            <button type="button" class="color-opt" data-color="#2ecc71" style="background:#2ecc71;"></button>
+            <button type="button" class="color-opt" data-color="#38bdf8" style="background:#38bdf8;"></button>
+            <button type="button" class="color-opt" data-color="#ff6584" style="background:#ff6584;"></button>
+            <button type="button" class="color-opt" data-color="#a78bfa" style="background:#a78bfa;"></button>
+            <button type="button" class="color-opt" data-color="#f43f5e" style="background:#f43f5e;"></button>
+            <button type="button" class="color-opt" data-color="#84cc16" style="background:#84cc16;"></button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-modal" class="btn-secondary">Batal</button>
+          <button type="submit" class="btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirmation & Alert Modal -->
+  <div class="modal-overlay" id="confirm-modal-overlay">
+    <div class="modal-card dialog-card">
+      <div class="dialog-icon-wrapper" id="dialog-icon-wrapper">
+        <div class="dialog-icon danger" id="dialog-icon-danger">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="dialog-icon info" id="dialog-icon-info" style="display: none;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+      </div>
+      <div class="dialog-content">
+        <h3 id="dialog-title" class="dialog-title">Konfirmasi Tindakan</h3>
+        <p id="dialog-message" class="dialog-message">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="btn-dialog-cancel" class="btn-secondary">Batal</button>
+        <button type="button" id="btn-dialog-confirm" class="btn-danger">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

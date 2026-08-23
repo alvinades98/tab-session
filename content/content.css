@@ -1,0 +1,80 @@
+#multisession-floating-pill {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 2147483647;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: auto;
+  user-select: none;
+  animation: msSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes msSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.multisession-pill-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 2px solid #18181b;
+  border-left: 4px solid var(--session-color, #faae2b);
+  border-radius: 999px;
+  box-shadow: 3px 3px 0px #18181b;
+  color: #18181b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.multisession-pill-inner:hover {
+  background: #fffdf5;
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 4px 4px 0px #18181b;
+}
+
+.multisession-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #18181b;
+  background-color: var(--session-color, #faae2b);
+  flex-shrink: 0;
+}
+
+.multisession-pill-icon {
+  font-size: 14px;
+}
+
+.multisession-pill-text {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.multisession-pill-close {
+  background: transparent;
+  border: none;
+  color: #71717a;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 3px;
+  margin-left: 2px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.multisession-pill-close:hover {
+  color: #ef4444;
+}
+
