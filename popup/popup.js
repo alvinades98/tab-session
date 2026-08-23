@@ -418,7 +418,11 @@ function setupEventListeners() {
       setTimeout(async () => {
         icon.classList.remove('spinning');
         await loadData();
-        showToast(`${res.count || 0} Cookies tersimpan!`);
+        if (res?.success === false) {
+          showToast('Dilewati: session aktif sudah berganti, cookie tidak ditimpa');
+        } else {
+          showToast(`${res?.count || 0} Cookies tersimpan!`);
+        }
       }, 400);
     });
   });

@@ -95,6 +95,13 @@ async function persistState() {
   }
 }
 
+// Track the foreground tab (domain may be null for non-http pages)
+async function trackActiveTab(tabId, domain) {
+  lastActiveTabId = tabId;
+  lastActiveDomain = domain;
+  await persistState();
+}
+
 // Initialize on install / startup
 chrome.runtime.onInstalled.addListener(async (details) => {
   const data = await chrome.storage.local.get([
@@ -369,12 +376,13 @@ async function restoreCookiesForDomain(domain, sessionId) {
 }
 
 // Ensure browser has the cookies for target session on this domain (Atomic)
+// Returns true only when an actual cookie swap (clear + restore) happened
 async function loadSessionCookies(domain, targetSessionId) {
-  if (!domain || !targetSessionId) return;
+  if (!domain || !targetSessionId) return false;
 
   const currentLoaded = activeDomainLoadedSession[domain];
   if (currentLoaded === targetSessionId) {
-    return; // Target session cookies are already loaded
+    return false; // Target session cookies are already loaded
   }
 
   if (currentLoaded) {
@@ -387,6 +395,7 @@ async function loadSessionCookies(domain, targetSessionId) {
   await restoreCookiesForDomain(domain, targetSessionId);
   activeDomainLoadedSession[domain] = targetSessionId;
   await persistState();
+  return true;
 }
 
 // Map session hex color to Chrome Tab Group color
@@ -667,10 +676,18 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
       return; // Tab closed or unavailable
     }
 
-    if (!tab?.url) return;
+    if (!tab?.url) {
+      await trackActiveTab(currentTabId, null);
+      return;
+    }
 
     const domain = extractDomain(tab.url);
-    if (!domain) return;
+    if (!domain) {
+      // Non-http pages hold no cookies; refresh tracking so a stale
+      // previous-tab snapshot can never fire on the next activation
+      await trackActiveTab(currentTabId, null);
+      return;
+    }
 
     // 1. Save state of previous active tab before switching
     if (lastActiveTabId && lastActiveDomain && lastActiveTabId !== currentTabId) {
@@ -684,13 +701,19 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     const targetSession = await getSessionForTab(currentTabId, domain);
 
     // 3. Load cookies for this tab's session
-    await loadSessionCookies(domain, targetSession);
+    const swapped = await loadSessionCookies(domain, targetSession);
     await updateBadgeForTab(currentTabId, domain, targetSession);
 
     // 4. Update tracking
-    lastActiveTabId = currentTabId;
-    lastActiveDomain = domain;
-    await persistState();
+    await trackActiveTab(currentTabId, domain);
+
+    // Reload once so the page re-authenticates against the correct cookie jar.
+    // Skipped when no swap occurred (target session was already loaded).
+    if (swapped) {
+      try {
+        await chrome.tabs.reload(currentTabId);
+      } catch {}
+    }
 
     // 5. Notify content script to synchronize visuals
     const { sessions = {} } = await chrome.storage.local.get('sessions');
@@ -901,10 +924,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       case 'SAVE_CURRENT_COOKIES': {
-        const count = await runExclusive(async () => {
-          return await saveCookiesForDomain(message.domain, message.sessionId, true);
+        const result = await runExclusive(async () => {
+          const jarOwner = activeDomainLoadedSession[message.domain];
+          if (jarOwner !== message.sessionId) {
+            console.warn(`[MultiSession] Blocked cookie save: jar holds "${jarOwner}", refusing to write into "${message.sessionId}".`);
+            return { blocked: true, count: 0 };
+          }
+          const count = await saveCookiesForDomain(message.domain, message.sessionId, true);
+          return { blocked: false, count };
         });
-        sendResponse({ success: true, count });
+        sendResponse({
+          success: !result?.blocked,
+          count: result?.count || 0,
+          error: result?.blocked ? 'session-mismatch' : undefined
+        });
         break;
       }
 

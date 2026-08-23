@@ -1,4 +1,6 @@
-# MultiSession Pro - Chrome Extension Multi-Account & Per-Tab Isolation
+# MultiSession Pro v1.2.0 — Per-Tab Multi-Session Engine
+
+Chrome Extension Multi-Account & Per-Tab Isolation
 
 Ekstensi Chrome (Manifest V3) untuk mengelola multiple session dan multi-akun secara **Per-Tab** maupun **Per-Domain** tanpa perlu logout atau membuka mode incognito.
 

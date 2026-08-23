@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "MultiSession Pro - Cookie & Account Manager",
-  "version": "1.0.0",
+  "name": "MultiSession Pro - Per-Tab Multi-Session Engine",
+  "version": "1.2.0",
   "description": "Kelola multiple akun dan multi-session terisolasi untuk setiap tab dan website secara instan.",
   "permissions": [
     "cookies",
