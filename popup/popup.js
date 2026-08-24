@@ -244,7 +244,7 @@ async function handleSwitchSession(targetSessionId) {
       tabId: currentTab?.id,
       domain: currentDomain,
       sessionId: targetSessionId,
-      reload: true
+      reload: false
     }, async () => {
       tabSessionId = targetSessionId;
       activeSessionId = targetSessionId;
@@ -257,7 +257,8 @@ async function handleSwitchSession(targetSessionId) {
       action: 'SET_DOMAIN_SESSION',
       domain: currentDomain,
       sessionId: targetSessionId,
-      tabId: currentTab?.id
+      tabId: currentTab?.id,
+      reload: false
     }, async () => {
       domainSessionId = targetSessionId;
       activeSessionId = targetSessionId;

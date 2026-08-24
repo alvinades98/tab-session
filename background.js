@@ -440,7 +440,7 @@ async function syncChromeTabGroup(tabId, session) {
 }
 
 // Set session for a specific Tab
-async function setSessionForTab(tabId, sessionId, domain = null, reload = true) {
+async function setSessionForTab(tabId, sessionId, domain = null, reload = false) {
   if (!tabId || !sessionId) return { success: false, error: 'Invalid parameters' };
 
   await ensureInitialized();
@@ -469,7 +469,7 @@ async function setSessionForTab(tabId, sessionId, domain = null, reload = true) 
 }
 
 // Set session globally for a Domain
-async function setSessionForDomain(domain, sessionId, currentTabId = null) {
+async function setSessionForDomain(domain, sessionId, currentTabId = null, reload = false) {
   if (!domain || !sessionId) return { success: false, error: 'Invalid parameters' };
 
   await ensureInitialized();
@@ -492,9 +492,11 @@ async function setSessionForDomain(domain, sessionId, currentTabId = null) {
       await syncChromeTabGroup(currentTabId, session);
       chrome.tabs.sendMessage(currentTabId, { action: 'SESSION_CHANGED', session }).catch(() => {});
     }
-    try {
-      await chrome.tabs.reload(currentTabId);
-    } catch {}
+    if (reload) {
+      try {
+        await chrome.tabs.reload(currentTabId);
+      } catch {}
+    }
   }
 
   return { success: true, domain, sessionId };
@@ -657,7 +659,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const domain = extractDomain(tab.url);
     if (domain) {
       await runExclusive(async () => {
-        await setSessionForTab(tab.id, sessionId, domain, true);
+        await setSessionForTab(tab.id, sessionId, domain, false);
       });
     }
   }
@@ -707,14 +709,6 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     // 4. Update tracking
     await trackActiveTab(currentTabId, domain);
 
-    // Reload once so the page re-authenticates against the correct cookie jar.
-    // Skipped when no swap occurred (target session was already loaded).
-    if (swapped) {
-      try {
-        await chrome.tabs.reload(currentTabId);
-      } catch {}
-    }
-
     // 5. Notify content script to synchronize visuals
     const { sessions = {} } = await chrome.storage.local.get('sessions');
     const session = sessions[targetSession] || sessions['default'];
@@ -749,7 +743,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             const tabObj = tab.url ? tab : await chrome.tabs.get(tabId);
             const domain = extractDomain(tabObj?.url);
             if (domain) {
-              await setSessionForTab(tabId, matchedSession.id, domain, true);
+              await setSessionForTab(tabId, matchedSession.id, domain, false);
             } else {
               tabSessionMap[tabId] = matchedSession.id;
               await persistState();
@@ -897,7 +891,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'SET_TAB_SESSION': {
         const res = await runExclusive(async () => {
-          return await setSessionForTab(message.tabId, message.sessionId, message.domain, message.reload !== false);
+          return await setSessionForTab(message.tabId, message.sessionId, message.domain, message.reload === true);
         });
         sendResponse(res);
         break;
@@ -905,7 +899,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'SET_DOMAIN_SESSION': {
         const res = await runExclusive(async () => {
-          return await setSessionForDomain(message.domain, message.sessionId, message.tabId);
+          return await setSessionForDomain(message.domain, message.sessionId, message.tabId, message.reload === true);
         });
         sendResponse(res);
         break;

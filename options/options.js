@@ -361,7 +361,7 @@ function setupEventListeners() {
       tabId,
       domain,
       sessionId: targetSessionId,
-      reload: true
+      reload: false
     }, async () => {
       tabSessionMap[tabId] = targetSessionId;
       showToast(`Tab #${tabId} dipindahkan ke ${sessions[targetSessionId]?.name || 'Session'}`);
