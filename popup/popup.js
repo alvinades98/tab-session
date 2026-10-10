@@ -5,331 +5,243 @@
 let currentTab = null;
 let currentDomain = null;
 let activeSessionId = 'default';
-let isolationMode = 'tab'; // 'tab' | 'domain'
-let currentScope = 'tab'; // 'tab' | 'domain'
+let currentScope = 'tab'; // 'tab' | 'domain' (persisted as isolationMode)
 let tabSessionId = null;
 let domainSessionId = 'default';
 let sessions = {};
-let sessionCookies = {};
+
+const SEARCH_THRESHOLD = 6;
+
+const $ = (id) => document.getElementById(id);
 
 // DOM Elements
-const currentDomainEl = document.getElementById('current-domain');
-const currentTabBadgeEl = document.getElementById('current-tab-badge');
-const currentScopeLabelEl = document.getElementById('current-scope-label');
-const currentSessionNameEl = document.getElementById('current-session-name');
-const currentSessionIconEl = document.getElementById('current-session-icon');
-const currentSessionDotEl = document.getElementById('current-session-dot');
-const sessionListEl = document.getElementById('session-list');
-const searchInput = document.getElementById('search-input');
-const btnSync = document.getElementById('btn-sync');
-const btnAddSession = document.getElementById('btn-add-session');
-const btnOptions = document.getElementById('btn-options');
-const btnClearDomain = document.getElementById('btn-clear-domain');
-const btnNewIsolatedTab = document.getElementById('btn-new-isolated-tab');
-const btnToggleMode = document.getElementById('btn-toggle-mode');
-const modeText = document.getElementById('mode-text');
-const btnScopeTab = document.getElementById('btn-scope-tab');
-const btnScopeDomain = document.getElementById('btn-scope-domain');
+const currentDomainEl = $('current-domain');
+const currentSessionNameEl = $('current-session-name');
+const currentSessionIconEl = $('current-session-icon');
+const currentSessionDotEl = $('current-session-dot');
+const sessionListEl = $('session-list');
+const searchWrap = $('search-wrap');
+const searchInput = $('search-input');
+const btnSync = $('btn-sync');
+const btnAddSession = $('btn-add-session');
+const btnOptions = $('btn-options');
+const btnClearDomain = $('btn-clear-domain');
+const btnScopeTab = $('btn-scope-tab');
+const btnScopeDomain = $('btn-scope-domain');
 
-// Modal Elements (Session Form)
-const modalOverlay = document.getElementById('modal-overlay');
-const btnCloseModal = document.getElementById('btn-close-modal');
-const btnCancelModal = document.getElementById('btn-cancel-modal');
-const sessionForm = document.getElementById('session-form');
-const formSessionId = document.getElementById('form-session-id');
-const formSessionName = document.getElementById('form-session-name');
-const modalTitle = document.getElementById('modal-title');
-const toastEl = document.getElementById('toast');
+// Session form
+const modalOverlay = $('modal-overlay');
+const btnCancelModal = $('btn-cancel-modal');
+const sessionForm = $('session-form');
+const formSessionId = $('form-session-id');
+const formSessionName = $('form-session-name');
+const modalTitle = $('modal-title');
+const toastEl = $('toast');
 
-// Dialog Elements (Confirmation & Alerts)
-const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
-const dialogTitle = document.getElementById('dialog-title');
-const dialogMessage = document.getElementById('dialog-message');
-const dialogIconDanger = document.getElementById('dialog-icon-danger');
-const dialogIconInfo = document.getElementById('dialog-icon-info');
-const btnDialogConfirm = document.getElementById('btn-dialog-confirm');
-const btnDialogCancel = document.getElementById('btn-dialog-cancel');
+// Confirmation dialog
+const confirmModalOverlay = $('confirm-modal-overlay');
+const dialogTitle = $('dialog-title');
+const dialogMessage = $('dialog-message');
+const btnDialogConfirm = $('btn-dialog-confirm');
+const btnDialogCancel = $('btn-dialog-cancel');
 
 let selectedIcon = '👤';
 let selectedColor = '#faae2b';
 
-// Init on popup load
+const ICONS = {
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+  open: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
+  edit: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+  delete: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>'
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
-  await initCurrentTab();
-  await loadData();
   setupEventListeners();
+  await refresh(true);
 });
 
-// Get current active tab and parse domain
-async function initCurrentTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentTab = tab;
-
-  if (tab?.id) {
-    currentTabBadgeEl.textContent = `Tab #${tab.id}`;
-  }
-
-  if (tab?.url) {
-    try {
-      const url = new URL(tab.url);
-      if (['http:', 'https:'].includes(url.protocol)) {
-        currentDomain = url.hostname;
-      } else {
-        currentDomain = null;
-      }
-    } catch {
-      currentDomain = null;
-    }
-  }
-
-  if (currentDomain) {
-    currentDomainEl.textContent = currentDomain;
-  } else {
-    currentDomainEl.textContent = 'Halaman Internal Browser';
-    currentDomainEl.style.color = '#94a3b8';
-    currentTabBadgeEl.style.display = 'none';
-  }
+// Re-read the active tab and its session state (also used when the active tab changes while the popup is open)
+async function refresh(initial = false) {
+  await initCurrentTab();
+  await loadData(initial);
 }
 
-// Load status from background
-async function loadData() {
+function sendMessage(payload) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({
-      action: 'GET_STATUS_INFO',
-      tabId: currentTab?.id,
-      domain: currentDomain
-    }, (res) => {
-      if (res) {
-        isolationMode = res.isolationMode || 'tab';
-        tabSessionId = res.tabSessionId;
-        domainSessionId = res.domainSessionId || 'default';
-        activeSessionId = res.activeSessionId || 'default';
-        sessions = res.sessions || {};
-      }
-
-      updateModeUI();
-      renderActiveBanner();
-      renderSessionList();
-      resolve();
+    chrome.runtime.sendMessage(payload, (res) => {
+      void chrome.runtime.lastError;
+      resolve(res);
     });
   });
 }
 
-function updateModeUI() {
-  modeText.textContent = isolationMode === 'tab' ? 'Mode: Per-Tab' : 'Mode: Domain';
-  if (currentScope === 'tab') {
-    btnScopeTab.classList.add('active');
-    btnScopeDomain.classList.remove('active');
-    currentScopeLabelEl.textContent = 'Session aktif untuk tab ini:';
-  } else {
-    btnScopeTab.classList.remove('active');
-    btnScopeDomain.classList.add('active');
-    currentScopeLabelEl.textContent = 'Session global untuk website ini:';
+// Get current active tab and parse domain
+async function initCurrentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  currentTab = tab || null;
+  currentDomain = null;
+
+  try {
+    const url = new URL(tab?.url || tab?.pendingUrl || '');
+    if (['http:', 'https:'].includes(url.protocol)) {
+      currentDomain = url.hostname;
+    }
+  } catch {}
+
+  currentDomainEl.textContent = currentDomain || 'Halaman internal browser';
+  for (const el of [btnSync, btnClearDomain, btnScopeTab, btnScopeDomain]) {
+    el.disabled = !currentDomain;
   }
 }
 
-// Render active session banner
-function renderActiveBanner() {
-  const effectiveSessionId = currentScope === 'tab' ? (tabSessionId || activeSessionId) : domainSessionId;
-  const activeSession = sessions[effectiveSessionId] || sessions['default'] || {
+// Load status from background
+async function loadData(initial = false) {
+  const res = await sendMessage({
+    action: 'GET_STATUS_INFO',
+    tabId: currentTab?.id,
+    domain: currentDomain
+  });
+
+  if (res) {
+    if (initial) currentScope = res.isolationMode === 'domain' ? 'domain' : 'tab';
+    tabSessionId = res.tabSessionId;
+    domainSessionId = res.domainSessionId || 'default';
+    activeSessionId = res.activeSessionId || 'default';
+    sessions = res.sessions || {};
+  }
+
+  searchWrap.hidden = Object.keys(sessions).length <= SEARCH_THRESHOLD;
+  render();
+}
+
+// Session the user is currently targeting given the selected scope
+function getTargetSessionId() {
+  return currentScope === 'tab' ? (tabSessionId || activeSessionId) : domainSessionId;
+}
+
+function render() {
+  btnScopeTab.classList.toggle('active', currentScope === 'tab');
+  btnScopeDomain.classList.toggle('active', currentScope === 'domain');
+  renderActiveSession();
+  renderSessionList(searchInput.value);
+}
+
+function renderActiveSession() {
+  const session = sessions[getTargetSessionId()] || sessions['default'] || {
     name: 'Default',
     icon: '👤',
     color: '#faae2b'
   };
 
-  currentSessionNameEl.textContent = activeSession.name;
-  currentSessionIconEl.textContent = activeSession.icon || '👤';
-  currentSessionDotEl.style.backgroundColor = activeSession.color || '#faae2b';
+  currentSessionNameEl.textContent = session.name;
+  currentSessionIconEl.textContent = session.icon || '👤';
+  currentSessionDotEl.style.backgroundColor = session.color || '#faae2b';
 }
 
-// Render list of all sessions
 function renderSessionList(filterQuery = '') {
-  sessionListEl.innerHTML = '';
   const query = filterQuery.toLowerCase().trim();
-  const sessionEntries = Object.values(sessions).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-
-  const filtered = sessionEntries.filter(s => 
-    s.name.toLowerCase().includes(query)
-  );
+  const targetId = getTargetSessionId();
+  const filtered = Object.values(sessions)
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+    .filter((s) => s.name.toLowerCase().includes(query));
 
   if (filtered.length === 0) {
-    sessionListEl.innerHTML = `
-      <div style="text-align: center; padding: 24px 0; color: #71717a; font-size: 12px; font-weight: 600;">
-        Tidak ada session yang cocok.
-      </div>
-    `;
+    sessionListEl.innerHTML = '<li class="empty">Tidak ada session yang cocok.</li>';
     return;
   }
 
-  const currentTargetSessionId = currentScope === 'tab' ? (tabSessionId || activeSessionId) : domainSessionId;
+  sessionListEl.innerHTML = filtered.map((session) => {
+    const isActive = session.id === targetId;
+    const id = escapeHtml(session.id);
+    const isDefault = session.id === 'default';
 
-  filtered.forEach(session => {
-    const isActive = session.id === currentTargetSessionId;
-
-    const card = document.createElement('div');
-    card.className = `session-card ${isActive ? 'active' : ''}`;
-    card.dataset.id = session.id;
-    card.title = isActive ? 'Session ini sedang aktif' : `Klik untuk beralih ke "${session.name}"`;
-
-    card.innerHTML = `
-      <div class="session-card-left">
-        <div class="session-badge-avatar" style="background: ${session.color || '#faae2b'};">
-          ${session.icon || '📌'}
-        </div>
-        <div class="session-card-details">
-          <span class="session-card-name" title="${escapeHtml(session.name)}">${escapeHtml(session.name)}</span>
-          <div class="session-card-meta">
-            ${session.id === 'default' ? '<span>(Sistem / Utama)</span>' : '<span>Profil Kustom</span>'}
-          </div>
-        </div>
-      </div>
-      <div class="session-card-actions">
-        ${isActive ? `
-          <div class="active-indicator">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Aktif
-          </div>
-        ` : `
-          <span class="click-hint-indicator">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </span>
-        `}
-        ${currentDomain ? `
-          <button class="icon-btn btn-item-action" data-action="open-tab" data-id="${session.id}" title="Buka website ini di tab baru dengan session ini">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-          </button>
-        ` : ''}
-        ${session.id !== 'default' ? `
-          <button class="icon-btn btn-item-action" data-action="edit" data-id="${session.id}" title="Edit">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-          <button class="icon-btn btn-item-action" data-action="delete" data-id="${session.id}" title="Hapus" style="color: #ef4444;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-            </svg>
-          </button>
-        ` : ''}
-      </div>
+    return `
+      <li class="item ${isActive ? 'active' : ''}" data-id="${id}" title="${isActive ? 'Session aktif' : 'Klik untuk beralih'}">
+        <span class="avatar" style="--c:${escapeHtml(session.color || '#faae2b')}">${escapeHtml(session.icon || '📌')}</span>
+        <span class="name">${escapeHtml(session.name)}</span>
+        ${isActive ? `<span class="check">${ICONS.check}</span>` : ''}
+        <span class="actions">
+          ${currentDomain ? `<button class="icon-btn" data-action="open-tab" data-id="${id}" title="Buka di tab baru dengan session ini">${ICONS.open}</button>` : ''}
+          ${!isDefault ? `
+            <button class="icon-btn" data-action="edit" data-id="${id}" title="Edit">${ICONS.edit}</button>
+            <button class="icon-btn danger" data-action="delete" data-id="${id}" title="Hapus">${ICONS.delete}</button>
+          ` : ''}
+        </span>
+      </li>
     `;
-
-    sessionListEl.appendChild(card);
-  });
+  }).join('');
 }
 
-// Switch Session according to active scope
+// Switch session according to the active scope
 async function handleSwitchSession(targetSessionId) {
   if (!currentDomain) {
     showToast('Buka website terlebih dahulu');
     return;
   }
 
-  showToast(`Menerapkan session...`);
+  const res = await sendMessage(currentScope === 'tab'
+    ? {
+        action: 'SET_TAB_SESSION',
+        tabId: currentTab?.id,
+        domain: currentDomain,
+        sessionId: targetSessionId,
+        reload: false
+      }
+    : {
+        action: 'SET_DOMAIN_SESSION',
+        domain: currentDomain,
+        sessionId: targetSessionId,
+        tabId: currentTab?.id,
+        reload: false
+      });
 
-  if (currentScope === 'tab') {
-    // Apply only to this tab
-    chrome.runtime.sendMessage({
-      action: 'SET_TAB_SESSION',
-      tabId: currentTab?.id,
-      domain: currentDomain,
-      sessionId: targetSessionId,
-      reload: false
-    }, async () => {
-      tabSessionId = targetSessionId;
-      activeSessionId = targetSessionId;
-      await loadData();
-      showToast(`Tab diubah ke: ${sessions[targetSessionId]?.name || 'Session'}`);
-    });
-  } else {
-    // Apply globally to domain
-    chrome.runtime.sendMessage({
-      action: 'SET_DOMAIN_SESSION',
-      domain: currentDomain,
-      sessionId: targetSessionId,
-      tabId: currentTab?.id,
-      reload: false
-    }, async () => {
-      domainSessionId = targetSessionId;
-      activeSessionId = targetSessionId;
-      await loadData();
-      showToast(`Domain diubah ke: ${sessions[targetSessionId]?.name || 'Session'}`);
-    });
+  if (!res?.success) {
+    showToast('Gagal mengganti session');
+    return;
+  }
+
+  await loadData();
+  showToast(`${currentScope === 'tab' ? 'Tab' : 'Website'} → ${sessions[targetSessionId]?.name || 'Session'}`);
+}
+
+async function handleOpenTabWithSession(sessionId) {
+  if (!currentTab?.url) return;
+  const res = await sendMessage({
+    action: 'OPEN_NEW_TAB_WITH_SESSION',
+    url: currentTab.url,
+    sessionId
+  });
+  if (res?.success) {
+    showToast(`Tab baru: ${sessions[sessionId]?.name}`);
   }
 }
 
-// Open new tab with specific session
-async function handleOpenTabWithSession(sessionId) {
-  if (!currentTab?.url) return;
-  chrome.runtime.sendMessage({
-    action: 'OPEN_NEW_TAB_WITH_SESSION',
-    url: currentTab.url,
-    sessionId: sessionId
-  }, (res) => {
-    if (res?.success) {
-      showToast(`Tab baru dibuka di: ${sessions[sessionId]?.name}`);
-    }
-  });
+async function setScope(scope) {
+  if (scope === currentScope) return;
+  currentScope = scope;
+  render();
+  await sendMessage({ action: 'SET_ISOLATION_MODE', mode: scope });
 }
 
-// Custom confirmation dialog (Promise-based)
-function showConfirmDialog({
-  title = 'Konfirmasi Hapus',
-  message = 'Apakah Anda yakin?',
-  confirmText = 'Hapus',
-  cancelText = 'Batal',
-  type = 'danger'
-}) {
+// Promise-based confirmation dialog
+function showConfirmDialog({ title, message, confirmText = 'Hapus' }) {
   return new Promise((resolve) => {
     dialogTitle.textContent = title;
     dialogMessage.textContent = message;
     btnDialogConfirm.textContent = confirmText;
-    btnDialogCancel.textContent = cancelText;
-    btnDialogCancel.style.display = cancelText ? 'block' : 'none';
-
-    if (type === 'danger') {
-      dialogIconDanger.style.display = 'flex';
-      dialogIconInfo.style.display = 'none';
-      btnDialogConfirm.className = 'btn-danger';
-    } else {
-      dialogIconDanger.style.display = 'none';
-      dialogIconInfo.style.display = 'flex';
-      btnDialogConfirm.className = 'btn-primary';
-    }
-
     confirmModalOverlay.classList.add('active');
 
-    function onConfirm() {
-      cleanup();
-      resolve(true);
-    }
-
-    function onCancel() {
-      cleanup();
-      resolve(false);
-    }
-
-    function onOverlayClick(e) {
-      if (e.target === confirmModalOverlay) {
-        onCancel();
-      }
-    }
-
-    function cleanup() {
+    function finish(result) {
       btnDialogConfirm.removeEventListener('click', onConfirm);
       btnDialogCancel.removeEventListener('click', onCancel);
       confirmModalOverlay.removeEventListener('click', onOverlayClick);
       confirmModalOverlay.classList.remove('active');
+      resolve(result);
+    }
+    function onConfirm() { finish(true); }
+    function onCancel() { finish(false); }
+    function onOverlayClick(e) {
+      if (e.target === confirmModalOverlay) finish(false);
     }
 
     btnDialogConfirm.addEventListener('click', onConfirm);
@@ -338,256 +250,157 @@ function showConfirmDialog({
   });
 }
 
-// Event Listeners setup
 function setupEventListeners() {
-  // Scope Switcher
-  btnScopeTab.addEventListener('click', () => {
-    currentScope = 'tab';
-    updateModeUI();
-    renderActiveBanner();
-    renderSessionList(searchInput.value);
-  });
+  btnScopeTab.addEventListener('click', () => setScope('tab'));
+  btnScopeDomain.addEventListener('click', () => setScope('domain'));
 
-  btnScopeDomain.addEventListener('click', () => {
-    currentScope = 'domain';
-    updateModeUI();
-    renderActiveBanner();
-    renderSessionList(searchInput.value);
-  });
+  searchInput.addEventListener('input', (e) => renderSessionList(e.target.value));
 
-  // Toggle Isolation Mode (Tab / Domain default)
-  btnToggleMode.addEventListener('click', () => {
-    const newMode = isolationMode === 'tab' ? 'domain' : 'tab';
-    chrome.runtime.sendMessage({
-      action: 'SET_ISOLATION_MODE',
-      mode: newMode
-    }, async () => {
-      isolationMode = newMode;
-      currentScope = newMode;
-      updateModeUI();
-      renderActiveBanner();
-      renderSessionList(searchInput.value);
-      showToast(`Mode isolasi diubah ke: ${newMode === 'tab' ? 'Per-Tab' : 'Domain'}`);
-    });
-  });
-
-  // Search
-  searchInput.addEventListener('input', (e) => {
-    renderSessionList(e.target.value);
-  });
-
-  // Action clicks inside session list (card click = switch, button click = action)
-  sessionListEl.addEventListener('click', async (e) => {
-    // 1. If clicked an action button (open-tab, edit, delete), handle that specific action
-    const btn = e.target.closest('.btn-item-action');
+  // Row click = switch, action button click = that action
+  sessionListEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
     if (btn) {
       e.stopPropagation();
-      const action = btn.dataset.action;
-      const id = btn.dataset.id;
-      if (action === 'open-tab') {
-        handleOpenTabWithSession(id);
-      } else if (action === 'edit') {
-        openEditModal(id);
-      } else if (action === 'delete') {
-        handleDeleteSession(id);
-      }
+      const { action, id } = btn.dataset;
+      if (action === 'open-tab') handleOpenTabWithSession(id);
+      else if (action === 'edit') openModal(id);
+      else if (action === 'delete') handleDeleteSession(id);
       return;
     }
 
-    // 2. Otherwise, clicking anywhere on the card switches the session!
-    const card = e.target.closest('.session-card');
-    if (!card) return;
-
-    const id = card.dataset.id;
-    const currentTargetSessionId = currentScope === 'tab' ? (tabSessionId || activeSessionId) : domainSessionId;
-    if (id !== currentTargetSessionId) {
-      handleSwitchSession(id);
+    const item = e.target.closest('.item');
+    if (item && item.dataset.id !== getTargetSessionId()) {
+      handleSwitchSession(item.dataset.id);
     }
   });
 
-  // Sync / Save Cookies button
   btnSync.addEventListener('click', async () => {
     if (!currentDomain) return;
     const icon = btnSync.querySelector('.sync-icon');
     icon.classList.add('spinning');
 
-    chrome.runtime.sendMessage({
+    const res = await sendMessage({
       action: 'SAVE_CURRENT_COOKIES',
       domain: currentDomain,
       sessionId: activeSessionId
-    }, async (res) => {
-      setTimeout(async () => {
-        icon.classList.remove('spinning');
-        await loadData();
-        if (res?.success === false) {
-          showToast('Dilewati: session aktif sudah berganti, cookie tidak ditimpa');
-        } else {
-          showToast(`${res?.count || 0} Cookies tersimpan!`);
-        }
-      }, 400);
     });
+
+    setTimeout(() => icon.classList.remove('spinning'), 400);
+    await loadData();
+    showToast(res?.success === false
+      ? 'Dilewati: session aktif sudah berganti'
+      : `${res?.count || 0} cookie tersimpan`);
   });
 
-  // Reset Cookies for Domain
   btnClearDomain.addEventListener('click', async () => {
     if (!currentDomain) return;
     const confirmed = await showConfirmDialog({
-      title: 'Reset Cookie Domain',
-      message: `Hapus semua cookie aktif untuk "${currentDomain}"? Anda akan otomatis logout dari website ini.`,
-      confirmText: 'Ya, Reset Cookie',
-      cancelText: 'Batal',
-      type: 'danger'
+      title: 'Reset cookie',
+      message: `Hapus semua cookie untuk "${currentDomain}"? Anda akan logout dari website ini.`,
+      confirmText: 'Reset'
     });
+    if (!confirmed) return;
 
-    if (confirmed) {
-      chrome.runtime.sendMessage({
-        action: 'CLEAR_SESSION_COOKIES',
-        domain: currentDomain,
-        sessionId: activeSessionId,
-        clearBrowserToo: true
-      }, async () => {
-        if (currentTab?.id) {
-          chrome.tabs.reload(currentTab.id);
-        }
-        await loadData();
-        showToast('Cookie domain telah direset!');
-      });
-    }
+    await sendMessage({
+      action: 'CLEAR_SESSION_COOKIES',
+      domain: currentDomain,
+      sessionId: activeSessionId,
+      clearBrowserToo: true
+    });
+    if (currentTab?.id) chrome.tabs.reload(currentTab.id);
+    await loadData();
+    showToast('Cookie direset');
   });
 
-  // Open New Isolated Tab with Active Session
-  btnNewIsolatedTab.addEventListener('click', () => {
-    if (currentTab?.url) {
-      handleOpenTabWithSession(activeSessionId);
-    }
-  });
+  btnOptions.addEventListener('click', () => chrome.runtime.openOptionsPage());
+  btnAddSession.addEventListener('click', () => openModal());
 
-  // Options page
-  btnOptions.addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
-  });
-
-  // Add Session modal open
-  btnAddSession.addEventListener('click', () => {
-    openAddModal();
-  });
-
-  // Close modal
-  btnCloseModal.addEventListener('click', closeModal);
   btnCancelModal.addEventListener('click', closeModal);
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
 
-  // Icon picker
-  document.getElementById('icon-picker').addEventListener('click', (e) => {
+  $('icon-picker').addEventListener('click', (e) => {
     const btn = e.target.closest('.icon-opt');
     if (!btn) return;
-    document.querySelectorAll('.icon-opt').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     selectedIcon = btn.dataset.icon;
+    syncPickerSelections();
   });
 
-  // Color picker
-  document.getElementById('color-picker').addEventListener('click', (e) => {
+  $('color-picker').addEventListener('click', (e) => {
     const btn = e.target.closest('.color-opt');
     if (!btn) return;
-    document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     selectedColor = btn.dataset.color;
+    syncPickerSelections();
   });
 
-  // Form Submit
   sessionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = formSessionName.value.trim();
     const editId = formSessionId.value;
-
     if (!name) return;
 
-    const data = await chrome.storage.local.get('sessions');
-    const existingSessions = data.sessions || {};
+    const { sessions: existing = {} } = await chrome.storage.local.get('sessions');
 
     if (editId) {
-      existingSessions[editId] = {
-        ...existingSessions[editId],
-        name,
-        icon: selectedIcon,
-        color: selectedColor
-      };
+      existing[editId] = { ...existing[editId], name, icon: selectedIcon, color: selectedColor };
     } else {
       const newId = `session-${Date.now()}`;
-      existingSessions[newId] = {
-        id: newId,
-        name,
-        icon: selectedIcon,
-        color: selectedColor,
-        createdAt: Date.now()
-      };
+      existing[newId] = { id: newId, name, icon: selectedIcon, color: selectedColor, createdAt: Date.now() };
     }
 
-    await chrome.storage.local.set({ sessions: existingSessions });
+    await chrome.storage.local.set({ sessions: existing });
     chrome.runtime.sendMessage({ action: 'REFRESH_MENUS' });
 
     closeModal();
     await loadData();
-    showToast(editId ? 'Session diperbarui!' : 'Session baru dibuat!');
+    showToast(editId ? 'Session diperbarui' : 'Session dibuat');
+  });
+
+  // Keep the popup in sync if the active tab changes while it is open
+  chrome.tabs.onActivated.addListener(() => refresh());
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (tabId === currentTab?.id && changeInfo.url) refresh();
   });
 }
 
-function openAddModal() {
-  modalTitle.textContent = 'Buat Session Baru';
-  formSessionId.value = '';
-  formSessionName.value = '';
-  selectedIcon = '👤';
-  selectedColor = '#faae2b';
+function openModal(id = null) {
+  const session = id ? sessions[id] : null;
+  if (id && !session) return;
+
+  modalTitle.textContent = session ? 'Edit session' : 'Session baru';
+  formSessionId.value = id || '';
+  formSessionName.value = session?.name || '';
+  selectedIcon = session?.icon || '👤';
+  selectedColor = session?.color || '#faae2b';
   syncPickerSelections();
   modalOverlay.classList.add('active');
   formSessionName.focus();
-}
-
-function openEditModal(id) {
-  const session = sessions[id];
-  if (!session) return;
-
-  modalTitle.textContent = 'Edit Profil Session';
-  formSessionId.value = id;
-  formSessionName.value = session.name;
-  selectedIcon = session.icon || '👤';
-  selectedColor = session.color || '#faae2b';
-  syncPickerSelections();
-  modalOverlay.classList.add('active');
-  formSessionName.focus();
-}
-
-function syncPickerSelections() {
-  document.querySelectorAll('.icon-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.icon === selectedIcon);
-  });
-  document.querySelectorAll('.color-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.color === selectedColor);
-  });
 }
 
 function closeModal() {
   modalOverlay.classList.remove('active');
 }
 
-async function handleDeleteSession(id) {
-  if (id === 'default') {
-    showToast('Session Default tidak bisa dihapus');
-    return;
-  }
-
-  const session = sessions[id];
-  const confirmed = await showConfirmDialog({
-    title: 'Hapus Session',
-    message: `Apakah Anda yakin ingin menghapus session "${session?.name || id}"? Semua data cookie tersimpan untuk session ini akan dihapus permanen.`,
-    confirmText: 'Ya, Hapus Session',
-    cancelText: 'Batal',
-    type: 'danger'
+function syncPickerSelections() {
+  document.querySelectorAll('.icon-opt').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.icon === selectedIcon);
   });
+  document.querySelectorAll('.color-opt').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.color === selectedColor);
+  });
+}
 
+async function handleDeleteSession(id) {
+  if (id === 'default') return;
+
+  const confirmed = await showConfirmDialog({
+    title: 'Hapus session',
+    message: `Hapus "${sessions[id]?.name || id}"? Semua cookie tersimpan untuk session ini ikut terhapus.`
+  });
   if (!confirmed) return;
 
   const data = await chrome.storage.local.get(['sessions', 'sessionCookies', 'domainSessionMap']);
@@ -597,11 +410,8 @@ async function handleDeleteSession(id) {
 
   delete newSessions[id];
   delete newSessionCookies[id];
-
   for (const [dom, sessId] of Object.entries(newDomainMap)) {
-    if (sessId === id) {
-      newDomainMap[dom] = 'default';
-    }
+    if (sessId === id) newDomainMap[dom] = 'default';
   }
 
   await chrome.storage.local.set({
@@ -609,30 +419,22 @@ async function handleDeleteSession(id) {
     sessionCookies: newSessionCookies,
     domainSessionMap: newDomainMap
   });
-
   chrome.runtime.sendMessage({ action: 'REFRESH_MENUS' });
 
-  if (activeSessionId === id) {
-    activeSessionId = 'default';
-  }
-
   await loadData();
-  showToast('Session berhasil dihapus');
+  showToast('Session dihapus');
 }
 
-// Toast notification helper
 let toastTimer = null;
 function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toastEl.classList.remove('show');
-  }, 2200);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
 }
 
 function escapeHtml(str) {
-  return (str || '').replace(/[&<>"']/g, m => ({
+  return String(str || '').replace(/[&<>"']/g, (m) => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',

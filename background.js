@@ -171,6 +171,26 @@ function extractDomain(urlStr) {
   }
 }
 
+// Helper: Registrable site of a hostname ("mail.google.com" -> "google.com", "shop.tokopedia.co.id" -> "tokopedia.co.id").
+// Login cookies usually live on the parent domain, so the cookie jar must be swapped per site, not per hostname.
+const SECOND_LEVEL_LABELS = new Set(['co', 'com', 'net', 'org', 'ac', 'go', 'or', 'web', 'sch', 'my', 'gov', 'edu', 'mil', 'biz', 'ne', 'gob']);
+function getSiteKey(hostname) {
+  if (!hostname) return hostname;
+  const host = hostname.replace(/^\./, '').toLowerCase();
+  if (/^[\d.]+$/.test(host) || host.includes(':')) return host; // IP address
+  const parts = host.split('.');
+  if (parts.length <= 2) return host;
+  const tld = parts[parts.length - 1];
+  const sld = parts[parts.length - 2];
+  const take = tld.length === 2 && SECOND_LEVEL_LABELS.has(sld) ? 3 : 2;
+  return parts.slice(-take).join('.');
+}
+
+// Helper: Session whose cookies currently occupy the browser jar for this domain's site
+function getJarOwner(domain) {
+  return domain ? activeDomainLoadedSession[getSiteKey(domain)] : undefined;
+}
+
 // Helper: Format URL for cookie remove / set
 function getCookieUrl(cookie) {
   const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
@@ -252,22 +272,25 @@ async function getSessionForTab(tabId, domain) {
 // Save all active browser cookies for a domain into a specific session's storage
 async function saveCookiesForDomain(domain, sessionId, force = false) {
   if (!domain || !sessionId) return 0;
+  const site = getSiteKey(domain);
 
   // SAFETY GUARD: Never snapshot cookies into sessionId if active browser cookies belong to a different session!
-  if (!force && activeDomainLoadedSession[domain] && activeDomainLoadedSession[domain] !== sessionId) {
-    console.warn(`[MultiSession] Prevented accidental cookie overwrite: domain ${domain} currently loaded with session "${activeDomainLoadedSession[domain]}", but tried to save as "${sessionId}".`);
+  if (!force && activeDomainLoadedSession[site] && activeDomainLoadedSession[site] !== sessionId) {
+    console.warn(`[MultiSession] Prevented accidental cookie overwrite: site ${site} currently loaded with session "${activeDomainLoadedSession[site]}", but tried to save as "${sessionId}".`);
     return 0;
   }
 
   try {
-    const cookies = await chrome.cookies.getAll({ domain });
+    const cookies = await chrome.cookies.getAll({ domain: site });
     const { sessionCookies = {} } = await chrome.storage.local.get('sessionCookies');
 
     if (!sessionCookies[sessionId]) {
       sessionCookies[sessionId] = {};
     }
 
-    sessionCookies[sessionId][domain] = cookies.map((c) => ({
+    // Drop legacy hostname-keyed snapshot now that it is stored per site
+    if (site !== domain) delete sessionCookies[sessionId][domain];
+    sessionCookies[sessionId][site] = cookies.map((c) => ({
       name: c.name,
       value: c.value,
       domain: c.domain,
@@ -291,7 +314,7 @@ async function saveCookiesForDomain(domain, sessionId, force = false) {
 async function clearCookiesForDomain(domain) {
   if (!domain) return;
   try {
-    const cookies = await chrome.cookies.getAll({ domain });
+    const cookies = await chrome.cookies.getAll({ domain: getSiteKey(domain) });
     for (const cookie of cookies) {
       const url = getCookieUrl(cookie);
       try {
@@ -314,7 +337,7 @@ async function restoreCookiesForDomain(domain, sessionId) {
   if (!domain || !sessionId) return;
   try {
     const { sessionCookies = {} } = await chrome.storage.local.get('sessionCookies');
-    const stored = sessionCookies[sessionId]?.[domain] || [];
+    const stored = sessionCookies[sessionId]?.[getSiteKey(domain)] || sessionCookies[sessionId]?.[domain] || [];
 
     for (const cookie of stored) {
       const url = getCookieUrl(cookie);
@@ -380,7 +403,8 @@ async function restoreCookiesForDomain(domain, sessionId) {
 async function loadSessionCookies(domain, targetSessionId) {
   if (!domain || !targetSessionId) return false;
 
-  const currentLoaded = activeDomainLoadedSession[domain];
+  const site = getSiteKey(domain);
+  const currentLoaded = activeDomainLoadedSession[site];
   if (currentLoaded === targetSessionId) {
     return false; // Target session cookies are already loaded
   }
@@ -393,7 +417,7 @@ async function loadSessionCookies(domain, targetSessionId) {
   // Clear & Restore target session
   await clearCookiesForDomain(domain);
   await restoreCookiesForDomain(domain, targetSessionId);
-  activeDomainLoadedSession[domain] = targetSessionId;
+  activeDomainLoadedSession[site] = targetSessionId;
   await persistState();
   return true;
 }
@@ -512,7 +536,7 @@ async function openNewTabWithSession(url, sessionId) {
       // 1. Save current active tab cookies first before altering browser state
       if (lastActiveTabId && lastActiveDomain) {
         const prevSession = await getSessionForTab(lastActiveTabId, lastActiveDomain);
-        if (activeDomainLoadedSession[lastActiveDomain] === prevSession) {
+        if (getJarOwner(lastActiveDomain) === prevSession) {
           await saveCookiesForDomain(lastActiveDomain, prevSession, true);
         }
       }
@@ -665,55 +689,75 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
+// Swap the cookie jar to the session of the tab that just came to the foreground
+async function activateTab(currentTabId) {
+  await ensureInitialized();
+
+  let tab;
+  try {
+    tab = await chrome.tabs.get(currentTabId);
+  } catch {
+    return; // Tab closed or unavailable
+  }
+
+  // A freshly opened tab may not have committed its URL yet
+  const domain = extractDomain(tab?.url || tab?.pendingUrl);
+  if (!domain) {
+    // Non-http pages hold no cookies; refresh tracking so a stale
+    // previous-tab snapshot can never fire on the next activation
+    await trackActiveTab(currentTabId, null);
+    return;
+  }
+
+  // 1. Save state of previous active tab before switching
+  if (lastActiveTabId && lastActiveDomain && lastActiveTabId !== currentTabId) {
+    const prevSession = await getSessionForTab(lastActiveTabId, lastActiveDomain);
+    if (getJarOwner(lastActiveDomain) === prevSession) {
+      await saveCookiesForDomain(lastActiveDomain, prevSession, true);
+    }
+  }
+
+  // 2. Get target session for this newly activated tab
+  const targetSession = await getSessionForTab(currentTabId, domain);
+
+  // 3. Load cookies for this tab's session
+  await loadSessionCookies(domain, targetSession);
+  await updateBadgeForTab(currentTabId, domain, targetSession);
+
+  // 4. Update tracking
+  await trackActiveTab(currentTabId, domain);
+
+  // 5. Notify content script to synchronize visuals
+  const { sessions = {} } = await chrome.storage.local.get('sessions');
+  const session = sessions[targetSession] || sessions['default'];
+  if (session) {
+    chrome.tabs.sendMessage(currentTabId, { action: 'SESSION_CHANGED', session }).catch(() => {});
+  }
+}
+
 // Event: Tab Activated (User switched between tabs)
 chrome.tabs.onActivated.addListener((activeInfo) => {
+  runExclusive(() => activateTab(activeInfo.tabId));
+});
+
+// Event: Window focus changed (switching windows does not fire tabs.onActivated)
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  chrome.tabs.query({ active: true, windowId }).then(([tab]) => {
+    if (tab?.id) runExclusive(() => activateTab(tab.id));
+  }).catch(() => {});
+});
+
+// Event: Tab opened from another tab (link, Ctrl+Click, window.open) inherits the opener's session
+chrome.tabs.onCreated.addListener((tab) => {
+  if (!tab.openerTabId) return;
   runExclusive(async () => {
     await ensureInitialized();
-    const currentTabId = activeInfo.tabId;
-
-    let tab;
-    try {
-      tab = await chrome.tabs.get(currentTabId);
-    } catch {
-      return; // Tab closed or unavailable
-    }
-
-    if (!tab?.url) {
-      await trackActiveTab(currentTabId, null);
-      return;
-    }
-
-    const domain = extractDomain(tab.url);
-    if (!domain) {
-      // Non-http pages hold no cookies; refresh tracking so a stale
-      // previous-tab snapshot can never fire on the next activation
-      await trackActiveTab(currentTabId, null);
-      return;
-    }
-
-    // 1. Save state of previous active tab before switching
-    if (lastActiveTabId && lastActiveDomain && lastActiveTabId !== currentTabId) {
-      const prevSession = await getSessionForTab(lastActiveTabId, lastActiveDomain);
-      if (activeDomainLoadedSession[lastActiveDomain] === prevSession) {
-        await saveCookiesForDomain(lastActiveDomain, prevSession, true);
-      }
-    }
-
-    // 2. Get target session for this newly activated tab
-    const targetSession = await getSessionForTab(currentTabId, domain);
-
-    // 3. Load cookies for this tab's session
-    const swapped = await loadSessionCookies(domain, targetSession);
-    await updateBadgeForTab(currentTabId, domain, targetSession);
-
-    // 4. Update tracking
-    await trackActiveTab(currentTabId, domain);
-
-    // 5. Notify content script to synchronize visuals
-    const { sessions = {} } = await chrome.storage.local.get('sessions');
-    const session = sessions[targetSession] || sessions['default'];
-    if (session) {
-      chrome.tabs.sendMessage(currentTabId, { action: 'SESSION_CHANGED', session }).catch(() => {});
+    if (tabSessionMap[tab.id]) return; // Already assigned, e.g. by openNewTabWithSession
+    const openerSession = tabSessionMap[tab.openerTabId];
+    if (openerSession) {
+      tabSessionMap[tab.id] = openerSession;
+      await persistState();
     }
   });
 });
@@ -768,8 +812,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
       // CRITICAL FIX: Only snapshot cookies if this tab is the ACTIVE foreground tab
       // and the browser's currently loaded cookies match targetSession!
-      if (tab.active && activeDomainLoadedSession[domain] === targetSession) {
+      if (tab.active && getJarOwner(domain) === targetSession) {
         await saveCookiesForDomain(domain, targetSession, true);
+      }
+
+      // Keep the foreground tracker in sync when the active tab navigates to another website
+      if (tab.active && tabId === lastActiveTabId && lastActiveDomain !== domain) {
+        await trackActiveTab(tabId, domain);
       }
     });
   }
@@ -855,7 +904,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ]);
         const domainSessionId = domain ? (domainSessionMap[domain] || 'default') : 'default';
         const activeSessionId = await getSessionForTab(tabId, domain);
-        const cookieCount = sessionCookies[activeSessionId]?.[domain]?.length || 0;
+        const cookieCount = (sessionCookies[activeSessionId]?.[getSiteKey(domain)] || sessionCookies[activeSessionId]?.[domain])?.length || 0;
 
         sendResponse({
           domain,
@@ -919,7 +968,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'SAVE_CURRENT_COOKIES': {
         const result = await runExclusive(async () => {
-          const jarOwner = activeDomainLoadedSession[message.domain];
+          const jarOwner = getJarOwner(message.domain);
           if (jarOwner !== message.sessionId) {
             console.warn(`[MultiSession] Blocked cookie save: jar holds "${jarOwner}", refusing to write into "${message.sessionId}".`);
             return { blocked: true, count: 0 };
@@ -938,13 +987,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'CLEAR_SESSION_COOKIES': {
         await runExclusive(async () => {
           const { sessionCookies = {} } = await chrome.storage.local.get('sessionCookies');
-          if (sessionCookies[message.sessionId]?.[message.domain]) {
-            delete sessionCookies[message.sessionId][message.domain];
+          const stored = sessionCookies[message.sessionId];
+          if (stored) {
+            delete stored[getSiteKey(message.domain)];
+            delete stored[message.domain];
             await chrome.storage.local.set({ sessionCookies });
           }
           if (message.clearBrowserToo) {
             await clearCookiesForDomain(message.domain);
-            delete activeDomainLoadedSession[message.domain];
+            delete activeDomainLoadedSession[getSiteKey(message.domain)];
             await persistState();
           }
         });

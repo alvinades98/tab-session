@@ -5,220 +5,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MultiSession Pro</title>
   <link rel="stylesheet" href="popup.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="brand">
-        <div class="logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="4" width="13" height="13" rx="3" fill="#faae2b" stroke="#18181b" stroke-width="2"/>
-            <rect x="9" y="7" width="13" height="13" rx="3" fill="#f36c21" stroke="#18181b" stroke-width="2"/>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">MultiSession</span>
-          <span class="brand-tag">PRO</span>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button id="btn-toggle-mode" class="mode-badge" title="Klik untuk beralih mode isolasi">
-          <span class="mode-dot"></span>
-          <span id="mode-text">Mode: Per-Tab</span>
-        </button>
-        <button id="btn-options" class="icon-btn" title="Pengaturan & Dashboard" aria-label="Settings">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-        </button>
-      </div>
-    </header>
+  <header class="header">
+    <div class="brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="13" height="13" rx="3" fill="#faae2b"/>
+        <rect x="9" y="7" width="13" height="13" rx="3" fill="#f36c21"/>
+      </svg>
+      <span>MultiSession</span>
+    </div>
+    <button id="btn-options" class="icon-btn" title="Pengaturan" aria-label="Pengaturan">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </header>
 
-    <!-- Active Target & Tab Info Banner -->
-    <div class="domain-card">
-      <div class="domain-info">
-        <div class="domain-row">
-          <span class="tab-badge" id="current-tab-badge">Tab #--</span>
-          <span id="current-domain" class="domain-name">Memuat...</span>
-        </div>
-        <span class="domain-label" id="current-scope-label">Session aktif untuk tab ini:</span>
-      </div>
-      <div class="domain-status">
-        <div class="active-session-pill" id="current-session-pill">
-          <span class="pill-dot" id="current-session-dot"></span>
-          <span class="pill-icon" id="current-session-icon">👤</span>
-          <span class="pill-name" id="current-session-name">Default</span>
-        </div>
+  <section class="current">
+    <div class="current-row">
+      <span id="current-domain" class="domain">Memuat...</span>
+      <div class="segmented">
+        <button class="seg-btn active" id="btn-scope-tab" title="Ganti session hanya untuk tab ini">Tab</button>
+        <button class="seg-btn" id="btn-scope-domain" title="Ganti session untuk semua tab website ini">Website</button>
       </div>
     </div>
-
-    <!-- Scope Switcher: Tab vs Domain -->
-    <div class="scope-segmented-control">
-      <button class="scope-btn active" id="btn-scope-tab" data-scope="tab">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="3" y1="9" x2="21" y2="9"></line>
-          <line x1="9" y1="21" x2="9" y2="9"></line>
-        </svg>
-        <span>Ganti Tab Ini</span>
-      </button>
-      <button class="scope-btn" id="btn-scope-domain" data-scope="domain">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-        </svg>
-        <span>Semua Tab Website</span>
-      </button>
+    <div class="current-session">
+      <span class="dot" id="current-session-dot"></span>
+      <span id="current-session-icon">👤</span>
+      <span id="current-session-name">Default</span>
     </div>
+  </section>
 
-    <!-- Toolbar: Search & Action Buttons -->
-    <div class="toolbar">
-      <div class="search-box">
-        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="search-input" placeholder="Cari session..." autocomplete="off">
-      </div>
-      <button id="btn-add-session" class="btn-primary-sm">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        <span>Baru</span>
-      </button>
-    </div>
-
-    <!-- Session List Section -->
-    <div class="session-list-section">
-      <div class="section-title-row">
-        <span class="section-title">Pilih Profil Session</span>
-        <button id="btn-sync" class="btn-link" title="Simpan cookies snapshot sekarang">
-          <svg class="sync-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          <span>Sync Cookie</span>
-        </button>
-      </div>
-
-      <div class="session-list" id="session-list">
-        <!-- Dynamic Session Cards generated by popup.js -->
-      </div>
-    </div>
-
-    <!-- Quick Tool Footer -->
-    <footer class="app-footer">
-      <button id="btn-clear-domain" class="footer-action-btn danger-text" title="Hapus semua cookies domain ini pada browser">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-        <span>Reset Cookie</span>
-      </button>
-      <button id="btn-new-isolated-tab" class="footer-action-btn primary-action" title="Buka website ini di tab baru dengan profil session aktif">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-        <span>+ Tab Baru Terisolasi</span>
-      </button>
-    </footer>
-
-    <!-- Modal Form: Add / Edit Session -->
-    <div class="modal-overlay" id="modal-overlay">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3 id="modal-title">Buat Session Baru</h3>
-          <button id="btn-close-modal" class="icon-btn close-btn">&times;</button>
-        </div>
-        <form id="session-form">
-          <input type="hidden" id="form-session-id" value="">
-          
-          <div class="form-group">
-            <label for="form-session-name">Nama Session / Akun</label>
-            <input type="text" id="form-session-name" placeholder="cth: Akun Kantor, Akun Pribadi, Alt 2" required maxlength="30">
-          </div>
-
-          <div class="form-group">
-            <label>Pilih Ikon</label>
-            <div class="icon-picker" id="icon-picker">
-              <button type="button" class="icon-opt active" data-icon="👤">👤</button>
-              <button type="button" class="icon-opt" data-icon="💼">💼</button>
-              <button type="button" class="icon-opt" data-icon="⚡">⚡</button>
-              <button type="button" class="icon-opt" data-icon="🛒">🛒</button>
-              <button type="button" class="icon-opt" data-icon="🎮">🎮</button>
-              <button type="button" class="icon-opt" data-icon="🔐">🔐</button>
-              <button type="button" class="icon-opt" data-icon="🌐">🌐</button>
-              <button type="button" class="icon-opt" data-icon="🚀">🚀</button>
-              <button type="button" class="icon-opt" data-icon="📦">📦</button>
-              <button type="button" class="icon-opt" data-icon="🧪">🧪</button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Warna Tag Profil</label>
-            <div class="color-picker" id="color-picker">
-              <button type="button" class="color-opt active" data-color="#faae2b" style="background:#faae2b;"></button>
-              <button type="button" class="color-opt" data-color="#f36c21" style="background:#f36c21;"></button>
-              <button type="button" class="color-opt" data-color="#2ecc71" style="background:#2ecc71;"></button>
-              <button type="button" class="color-opt" data-color="#38bdf8" style="background:#38bdf8;"></button>
-              <button type="button" class="color-opt" data-color="#ff6584" style="background:#ff6584;"></button>
-              <button type="button" class="color-opt" data-color="#a78bfa" style="background:#a78bfa;"></button>
-              <button type="button" class="color-opt" data-color="#f43f5e" style="background:#f43f5e;"></button>
-              <button type="button" class="color-opt" data-color="#84cc16" style="background:#84cc16;"></button>
-            </div>
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" id="btn-cancel-modal" class="btn-secondary">Batal</button>
-            <button type="submit" class="btn-primary">Simpan Session</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Confirmation & Alert Modal -->
-    <div class="modal-overlay" id="confirm-modal-overlay">
-      <div class="modal-card dialog-card">
-        <div class="dialog-icon-wrapper" id="dialog-icon-wrapper">
-          <div class="dialog-icon danger" id="dialog-icon-danger">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <div class="dialog-icon info" id="dialog-icon-info" style="display: none;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-          </div>
-        </div>
-        <div class="dialog-content">
-          <h3 id="dialog-title" class="dialog-title">Konfirmasi Hapus</h3>
-          <p id="dialog-message" class="dialog-message">Apakah Anda yakin ingin menghapus data ini?</p>
-        </div>
-        <div class="dialog-actions">
-          <button type="button" id="btn-dialog-cancel" class="btn-secondary">Batal</button>
-          <button type="button" id="btn-dialog-confirm" class="btn-danger">Hapus</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
+  <div class="search" id="search-wrap" hidden>
+    <input type="text" id="search-input" placeholder="Cari session..." autocomplete="off">
   </div>
+
+  <ul class="list" id="session-list"></ul>
+
+  <footer class="footer">
+    <button id="btn-add-session" class="text-btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Session baru
+    </button>
+    <div class="footer-right">
+      <button id="btn-sync" class="icon-btn" title="Simpan cookie session aktif" aria-label="Simpan cookie">
+        <svg class="sync-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+      </button>
+      <button id="btn-clear-domain" class="icon-btn danger" title="Reset cookie website ini" aria-label="Reset cookie">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Add / Edit Session -->
+  <div class="overlay" id="modal-overlay">
+    <form class="sheet" id="session-form">
+      <h3 id="modal-title">Session baru</h3>
+      <input type="hidden" id="form-session-id" value="">
+      <input type="text" id="form-session-name" placeholder="Nama session, cth: Akun Kantor" required maxlength="30">
+
+      <div class="picker" id="icon-picker">
+        <button type="button" class="icon-opt" data-icon="👤">👤</button>
+        <button type="button" class="icon-opt" data-icon="💼">💼</button>
+        <button type="button" class="icon-opt" data-icon="⚡">⚡</button>
+        <button type="button" class="icon-opt" data-icon="🛒">🛒</button>
+        <button type="button" class="icon-opt" data-icon="🎮">🎮</button>
+        <button type="button" class="icon-opt" data-icon="🔐">🔐</button>
+        <button type="button" class="icon-opt" data-icon="🌐">🌐</button>
+        <button type="button" class="icon-opt" data-icon="🚀">🚀</button>
+        <button type="button" class="icon-opt" data-icon="📦">📦</button>
+        <button type="button" class="icon-opt" data-icon="🧪">🧪</button>
+      </div>
+
+      <div class="picker" id="color-picker">
+        <button type="button" class="color-opt" data-color="#faae2b" style="--c:#faae2b"></button>
+        <button type="button" class="color-opt" data-color="#f36c21" style="--c:#f36c21"></button>
+        <button type="button" class="color-opt" data-color="#2ecc71" style="--c:#2ecc71"></button>
+        <button type="button" class="color-opt" data-color="#38bdf8" style="--c:#38bdf8"></button>
+        <button type="button" class="color-opt" data-color="#ff6584" style="--c:#ff6584"></button>
+        <button type="button" class="color-opt" data-color="#a78bfa" style="--c:#a78bfa"></button>
+        <button type="button" class="color-opt" data-color="#f43f5e" style="--c:#f43f5e"></button>
+        <button type="button" class="color-opt" data-color="#84cc16" style="--c:#84cc16"></button>
+      </div>
+
+      <div class="sheet-actions">
+        <button type="button" id="btn-cancel-modal" class="btn ghost">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Confirmation -->
+  <div class="overlay" id="confirm-modal-overlay">
+    <div class="sheet">
+      <h3 id="dialog-title">Konfirmasi</h3>
+      <p id="dialog-message" class="dialog-message"></p>
+      <div class="sheet-actions">
+        <button type="button" id="btn-dialog-cancel" class="btn ghost">Batal</button>
+        <button type="button" id="btn-dialog-confirm" class="btn danger">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
 
   <script src="popup.js"></script>
 </body>
