@@ -414,13 +414,207 @@ async function loadSessionCookies(domain, targetSessionId) {
     await saveCookiesForDomain(domain, currentLoaded, true);
   }
 
+  // Shield the tabs that lose the jar BEFORE swapping, so their in-flight
+  // responses cannot write Set-Cookie into the target session's jar
+  activeDomainLoadedSession[site] = targetSessionId;
+  await persistState();
+  await syncIsolationRules();
+
   // Clear & Restore target session
   await clearCookiesForDomain(domain);
   await restoreCookiesForDomain(domain, targetSessionId);
-  activeDomainLoadedSession[site] = targetSessionId;
-  await persistState();
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Per-tab request isolation for tabs whose session does NOT own the cookie jar.
+// The browser has a single cookie jar per site, so a background tab (e.g. still
+// reloading) would otherwise send the foreground session's cookies and, worse,
+// write its own Set-Cookie into the jar that now belongs to another session.
+// For every such tab a DNR rule replaces the Cookie header with the tab's own
+// stored session cookies and strips Set-Cookie from its responses.
+// ---------------------------------------------------------------------------
+const ISOLATION_RESOURCE_TYPES = [
+  'main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font', 'object',
+  'xmlhttprequest', 'ping', 'csp_report', 'media', 'websocket', 'other'
+];
+
+function buildCookieHeader(storedCookies = []) {
+  const now = Date.now() / 1000;
+  return storedCookies
+    .filter((c) => !c.expirationDate || c.expirationDate > now)
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
+}
+
+// Resolve a tab's session without side effects (no persist, no group lookups)
+async function peekSessionForTab(tabId, domain, domainSessionMap) {
+  if (tabSessionMap[tabId]) return tabSessionMap[tabId];
+  if (domain && domainSessionMap[domain]) return domainSessionMap[domain];
+  return 'default';
+}
+
+async function syncIsolationRules() {
+  if (!chrome.declarativeNetRequest) return;
+  try {
+    const sites = Object.keys(activeDomainLoadedSession).filter((s) => activeDomainLoadedSession[s]);
+    const addRules = [];
+
+    if (sites.length > 0) {
+      const tabs = await chrome.tabs.query({});
+      const { sessionCookies = {}, domainSessionMap = {} } = await chrome.storage.local.get([
+        'sessionCookies',
+        'domainSessionMap'
+      ]);
+      let nextId = 1;
+
+      for (const tab of tabs) {
+        if (!tab.id || tab.id < 0) continue;
+        const domain = extractDomain(tab.url || tab.pendingUrl);
+        const tabSession = await peekSessionForTab(tab.id, domain, domainSessionMap);
+
+        for (const site of sites) {
+          if (activeDomainLoadedSession[site] === tabSession) continue;
+          const cookieHeader = buildCookieHeader(sessionCookies[tabSession]?.[site]);
+          addRules.push({
+            id: nextId++,
+            priority: 1,
+            action: {
+              type: 'modifyHeaders',
+              requestHeaders: [
+                cookieHeader
+                  ? { header: 'cookie', operation: 'set', value: cookieHeader }
+                  : { header: 'cookie', operation: 'remove' }
+              ],
+              responseHeaders: [{ header: 'set-cookie', operation: 'remove' }]
+            },
+            condition: {
+              tabIds: [tab.id],
+              requestDomains: [site],
+              resourceTypes: ISOLATION_RESOURCE_TYPES
+            }
+          });
+        }
+      }
+    }
+
+    const existing = await chrome.declarativeNetRequest.getSessionRules();
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: existing.map((r) => r.id),
+      addRules
+    });
+  } catch (err) {
+    console.warn('[MultiSession] Error syncing isolation rules:', err);
+  }
+}
+
+// Parse one Set-Cookie header into the stored cookie shape
+function parseSetCookie(header, requestUrl) {
+  const parts = header.split(';').map((p) => p.trim());
+  const eq = parts[0].indexOf('=');
+  if (eq <= 0) return null;
+
+  const url = new URL(requestUrl);
+  const cookie = {
+    name: parts[0].slice(0, eq).trim(),
+    value: parts[0].slice(eq + 1).trim(),
+    domain: url.hostname,
+    path: '/',
+    secure: false,
+    httpOnly: false,
+    sameSite: 'unspecified'
+  };
+  let deleted = false;
+
+  for (const attr of parts.slice(1)) {
+    const [rawKey, ...rest] = attr.split('=');
+    const key = rawKey.trim().toLowerCase();
+    const val = rest.join('=').trim();
+    if (key === 'domain' && val) cookie.domain = `.${val.replace(/^\./, '')}`;
+    else if (key === 'path' && val) cookie.path = val;
+    else if (key === 'secure') cookie.secure = true;
+    else if (key === 'httponly') cookie.httpOnly = true;
+    else if (key === 'samesite') {
+      cookie.sameSite = { none: 'no_restriction', lax: 'lax', strict: 'strict' }[val.toLowerCase()] || 'unspecified';
+    } else if (key === 'max-age') {
+      const secs = parseInt(val, 10);
+      if (!isNaN(secs)) {
+        if (secs <= 0) deleted = true;
+        else cookie.expirationDate = Date.now() / 1000 + secs;
+      }
+    } else if (key === 'expires' && cookie.expirationDate === undefined) {
+      const t = Date.parse(val);
+      if (!isNaN(t)) {
+        if (t <= Date.now()) deleted = true;
+        else cookie.expirationDate = t / 1000;
+      }
+    }
+  }
+
+  return { cookie, deleted };
+}
+
+// Capture Set-Cookie of shielded (non-jar-owner) tabs into their own session store,
+// since DNR keeps those cookies out of the shared browser jar
+chrome.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    if (details.tabId < 0) return;
+    const setCookies = (details.responseHeaders || []).filter((h) => h.name.toLowerCase() === 'set-cookie' && h.value);
+    if (setCookies.length === 0) return;
+
+    // Snapshot ownership at response time: the queue may swap the jar before this runs
+    const responseDomain = extractDomain(details.url);
+    const ownerAtResponse = isInitialized && responseDomain ? activeDomainLoadedSession[getSiteKey(responseDomain)] : undefined;
+    const tabSessionAtResponse = isInitialized ? tabSessionMap[details.tabId] : undefined;
+
+    runExclusive(async () => {
+      await ensureInitialized();
+      const domain = responseDomain;
+      if (!domain) return;
+      const site = getSiteKey(domain);
+      const owner = ownerAtResponse || activeDomainLoadedSession[site];
+      if (!owner) return;
+
+      const { sessionCookies = {}, domainSessionMap = {} } = await chrome.storage.local.get([
+        'sessionCookies',
+        'domainSessionMap'
+      ]);
+      let tabDomain = domain;
+      try {
+        tabDomain = extractDomain((await chrome.tabs.get(details.tabId))?.url) || domain;
+      } catch {}
+      const tabSession = tabSessionAtResponse || await peekSessionForTab(details.tabId, tabDomain, domainSessionMap);
+      if (tabSession === owner) return; // Owner tab writes to the real jar normally
+
+      if (!sessionCookies[tabSession]) sessionCookies[tabSession] = {};
+      const stored = sessionCookies[tabSession][site] || [];
+
+      for (const h of setCookies) {
+        // Chromium may fold multiple Set-Cookie headers into one value separated by newlines
+        for (const line of h.value.split('\n')) {
+          const parsed = parseSetCookie(line, details.url);
+          if (!parsed) continue;
+          const { cookie, deleted } = parsed;
+          const idx = stored.findIndex((c) => c.name === cookie.name && c.path === cookie.path &&
+            c.domain.replace(/^\./, '') === cookie.domain.replace(/^\./, ''));
+          if (deleted) {
+            if (idx >= 0) stored.splice(idx, 1);
+          } else if (idx >= 0) {
+            stored[idx] = { ...stored[idx], ...cookie };
+          } else {
+            stored.push(cookie);
+          }
+        }
+      }
+
+      sessionCookies[tabSession][site] = stored;
+      await chrome.storage.local.set({ sessionCookies });
+      await syncIsolationRules();
+    });
+  },
+  { urls: ['<all_urls>'] },
+  ['responseHeaders', 'extraHeaders']
+);
 
 // Map session hex color to Chrome Tab Group color
 function getChromeTabGroupColor(hex) {
@@ -482,6 +676,10 @@ async function setSessionForTab(tabId, sessionId, domain = null, reload = false)
   if (domain) {
     await loadSessionCookies(domain, sessionId);
     await updateBadgeForTab(tabId, domain, sessionId);
+  }
+  await syncIsolationRules();
+
+  if (domain) {
     if (reload) {
       try {
         await chrome.tabs.reload(tabId);
@@ -511,6 +709,7 @@ async function setSessionForDomain(domain, sessionId, currentTabId = null, reloa
   if (currentTabId) {
     tabSessionMap[currentTabId] = sessionId;
     await persistState();
+    await syncIsolationRules();
     await updateBadgeForTab(currentTabId, domain, sessionId);
     if (session) {
       await syncChromeTabGroup(currentTabId, session);
@@ -554,6 +753,7 @@ async function openNewTabWithSession(url, sessionId) {
       lastActiveTabId = newTab.id;
       lastActiveDomain = domain;
       await persistState();
+      await syncIsolationRules();
 
       const { sessions = {} } = await chrome.storage.local.get('sessions');
       const session = sessions[sessionId] || sessions['default'];
@@ -758,6 +958,7 @@ chrome.tabs.onCreated.addListener((tab) => {
     if (openerSession) {
       tabSessionMap[tab.id] = openerSession;
       await persistState();
+      await syncIsolationRules();
     }
   });
 });
@@ -884,6 +1085,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
       lastActiveDomain = null;
     }
     await persistState();
+    await syncIsolationRules();
   });
 });
 
@@ -998,6 +1200,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             delete activeDomainLoadedSession[getSiteKey(message.domain)];
             await persistState();
           }
+          await syncIsolationRules();
         });
         sendResponse({ success: true });
         break;

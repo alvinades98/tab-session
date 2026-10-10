@@ -10,7 +10,9 @@
     "tabGroups",
     "activeTab",
     "contextMenus",
-    "webNavigation"
+    "webNavigation",
+    "webRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "<all_urls>"
